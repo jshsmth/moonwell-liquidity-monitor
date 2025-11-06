@@ -109,22 +109,24 @@ You can also manually trigger it:
 
 ## Sample Discord Alert
 
-When liquidity drops below thresholds, you'll receive a message like:
+When liquidity drops below thresholds, you'll receive a Discord embed like:
 
 ```
 🚨 Moonwell Liquidity Alert
 
-🏦 USD Coin Core ⚠️
-Total Supply: $39,708,425.00
-Total Borrow: $34,963,216.65
-Available Liquidity: $4,288,336.16  ← Below $4.5M threshold
-APY: 6.45%
+🏦 USD Coin Core
+**Total Supply:** $39,708,425.00
+**Total Borrow:** $34,963,216.65
+**Available Liquidity:** $4,288,336.16
+**APY:** 6.45%
 
 🏛️ Moonwell Flagship USDC
-Total Supply: $32,063,787.76
-Total Borrow: $32,063,787.76
-Available Liquidity: $32,063,787.76
-APY: 6.76%
+**Total Supply:** $32,063,787.76
+**Total Borrow:** $32,063,787.76
+**Available Liquidity:** $32,063,787.76
+**APY:** 6.76%
+
+Moonwell Base Network
 ```
 
 ## Local Development
@@ -140,28 +142,3 @@ npm start
 - **USD Coin Core:** https://moonwell.fi/markets/supply/base/usdc
 - **Moonwell Flagship USDC:** https://moonwell.fi/vaults/deposit/base/mwusdc
 - **Morpho Vault:** https://app.morpho.org/vault?address=0xc1256Ae5FF1cf2719D4937adb3bbCCab2E00A2Ca&network=base
-
-## Tech Stack
-
-- **Node.js 20+**
-- **Moonwell SDK** - Official SDK for Moonwell protocol data
-- **dotenv** - Environment variable management
-- **GitHub Actions** - Automated scheduling
-
-## Cost
-
-**$0** - Completely free when using GitHub Actions with a public repository.
-
-For private repositories, GitHub Actions provides 2,000 free minutes/month, which is more than enough for this tracker (~432 minutes/month).
-
-## License
-
-MIT
-
-## Contributing
-
-Issues and pull requests welcome!
-
-## Disclaimer
-
-This tool is for informational purposes only. Always verify liquidity levels on the official Moonwell platform before making financial decisions.
