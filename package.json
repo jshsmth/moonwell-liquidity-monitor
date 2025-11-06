@@ -1,0 +1,23 @@
+{
+  "name": "moonwell-liquidity-tracker",
+  "version": "1.0.0",
+  "description": "Track Moonwell USDC liquidity and send updates to Discord",
+  "main": "moonwell-liquidity-tracker.js",
+  "type": "module",
+  "scripts": {
+    "start": "node moonwell-liquidity-tracker.js",
+    "test": "node moonwell-liquidity-tracker.js"
+  },
+  "keywords": [
+    "moonwell",
+    "liquidity",
+    "discord",
+    "tracker"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@moonwell-fi/moonwell-sdk": "^0.9.11",
+    "dotenv": "^17.2.3"
+  }
+}
