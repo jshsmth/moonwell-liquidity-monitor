@@ -20,7 +20,7 @@ Automated monitoring tool that tracks USDC liquidity on Moonwell (Base network) 
 
 - ☁️ **Automated Deployment:**
   - Runs on GitHub Actions (free)
-  - Checks every 5 minutes
+  - Checks every 10 minutes
   - Zero maintenance required
 
 ## Quick Start
