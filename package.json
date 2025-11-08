@@ -14,7 +14,7 @@
     "discord",
     "tracker"
   ],
-  "author": "",
+  "author": "jshsmth",
   "license": "MIT",
   "dependencies": {
     "@moonwell-fi/moonwell-sdk": "^0.9.11",
