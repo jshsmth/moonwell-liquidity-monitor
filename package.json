@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "node moonwell-liquidity-tracker.js",
-    "test": "node moonwell-liquidity-tracker.js"
+    "test": "node moonwell-liquidity-tracker.js",
+    "test:alert": "node test/test-discord-alert.js",
+    "test:error": "node test/test-error-alert.js"
   },
   "keywords": [
     "moonwell",

@@ -15,7 +15,13 @@ const THRESHOLDS = {
 
 const DISCORD_CONFIG = {
   ALERT_COLOR: 0xff0000,
+  WARNING_COLOR: 0xffa500,
   FOOTER_TEXT: "Moonwell Base Network",
+};
+
+const RETRY_CONFIG = {
+  MAX_RETRIES: 3,
+  RETRY_DELAY_MS: 2000,
 };
 
 const MARKET_SYMBOLS = {
@@ -25,10 +31,10 @@ const MARKET_SYMBOLS = {
 
 if (!DISCORD_WEBHOOK_URL) {
   console.error(
-    "❌ ERROR: DISCORD_WEBHOOK_URL environment variable is not set",
+    "❌ ERROR: DISCORD_WEBHOOK_URL environment variable is not set"
   );
   console.error(
-    "Please set it in your .env file or as an environment variable",
+    "Please set it in your .env file or as an environment variable"
   );
   process.exit(1);
 }
@@ -78,52 +84,111 @@ function formatApy(apy) {
 // ============================================================================
 
 /**
- * Fetch USDC market and vault data from Moonwell
- * @returns {Promise<{usdcMarket: Object|null, mwusdcVault: Object|null}>}
+ * Sleep for specified milliseconds
+ * @param {number} ms - Milliseconds to sleep
+ * @returns {Promise<void>}
  */
-async function fetchMoonwellData() {
-  console.log("Fetching Moonwell data...");
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-  let usdcMarket = null;
-  let mwusdcVault = null;
-
+/**
+ * Fetch USDC market data with retry logic
+ * @param {number} attempt - Current attempt number
+ * @returns {Promise<Object|null>}
+ */
+async function fetchMarketData(attempt = 1) {
   try {
     const markets = await moonwellClient.getMarkets({ chainId: BASE_CHAIN_ID });
     console.log(`Found ${markets.length} markets on Base`);
 
-    usdcMarket = markets.find(
-      (m) => m.underlyingToken?.symbol === MARKET_SYMBOLS.USDC_MARKET,
+    const usdcMarket = markets.find(
+      (m) => m.underlyingToken?.symbol === MARKET_SYMBOLS.USDC_MARKET
     );
 
     if (usdcMarket) {
       console.log("✓ Found USDC market");
+      return usdcMarket;
     } else {
       console.log("✗ USDC market not found");
+      return null;
     }
   } catch (error) {
-    console.error("Error fetching markets:", error.message);
-  }
+    console.error(
+      `Error fetching markets (attempt ${attempt}):`,
+      error.message
+    );
 
+    if (attempt < RETRY_CONFIG.MAX_RETRIES) {
+      console.log(`Retrying in ${RETRY_CONFIG.RETRY_DELAY_MS}ms...`);
+      await sleep(RETRY_CONFIG.RETRY_DELAY_MS);
+      return fetchMarketData(attempt + 1);
+    }
+
+    throw error;
+  }
+}
+
+/**
+ * Fetch vault data with retry logic
+ * @param {number} attempt - Current attempt number
+ * @returns {Promise<Object|null>}
+ */
+async function fetchVaultData(attempt = 1) {
   try {
     const vaults = await moonwellClient.getMorphoVaults({
       chainId: BASE_CHAIN_ID,
     });
     console.log(`Found ${vaults.length} vaults on Base`);
 
-    mwusdcVault = vaults.find(
-      (v) => v.vaultToken?.symbol === MARKET_SYMBOLS.VAULT_TOKEN,
+    const mwusdcVault = vaults.find(
+      (v) => v.vaultToken?.symbol === MARKET_SYMBOLS.VAULT_TOKEN
     );
 
     if (mwusdcVault) {
       console.log("✓ Found mwUSDC vault");
+      return mwusdcVault;
     } else {
       console.log("✗ mwUSDC vault not found");
+      return null;
     }
   } catch (error) {
-    console.error("Error fetching vaults:", error.message);
+    console.error(`Error fetching vaults (attempt ${attempt}):`, error.message);
+
+    if (attempt < RETRY_CONFIG.MAX_RETRIES) {
+      console.log(`Retrying in ${RETRY_CONFIG.RETRY_DELAY_MS}ms...`);
+      await sleep(RETRY_CONFIG.RETRY_DELAY_MS);
+      return fetchVaultData(attempt + 1);
+    }
+
+    throw error;
+  }
+}
+
+/**
+ * Fetch USDC market and vault data from Moonwell
+ * @returns {Promise<{usdcMarket: Object|null, mwusdcVault: Object|null, errors: Array}>}
+ */
+async function fetchMoonwellData() {
+  console.log("Fetching Moonwell data...");
+
+  let usdcMarket = null;
+  let mwusdcVault = null;
+  const errors = [];
+
+  try {
+    usdcMarket = await fetchMarketData();
+  } catch (error) {
+    errors.push({ source: "USDC Market", error: error.message });
   }
 
-  return { usdcMarket, mwusdcVault };
+  try {
+    mwusdcVault = await fetchVaultData();
+  } catch (error) {
+    errors.push({ source: "mwUSDC Vault", error: error.message });
+  }
+
+  return { usdcMarket, mwusdcVault, errors };
 }
 
 // ============================================================================
@@ -189,7 +254,7 @@ function calculateVaultMetrics(vault) {
   const idleCash = vaultLiquidity - totalSupplied;
   const availableLiquidity = Math.min(
     vaultLiquidity,
-    idleCash + totalMarketLiquidity,
+    idleCash + totalMarketLiquidity
   );
 
   return {
@@ -244,7 +309,7 @@ function createAlertEmbed(
   usdcMetrics,
   vaultMetrics,
   hasUsdcData,
-  hasVaultData,
+  hasVaultData
 ) {
   const fields = [
     createDiscordField("🏦 USD Coin Core", usdcMetrics, hasUsdcData),
@@ -255,6 +320,30 @@ function createAlertEmbed(
     title: "🚨 Moonwell Liquidity Alert",
     color: DISCORD_CONFIG.ALERT_COLOR,
     fields,
+    timestamp: new Date().toISOString(),
+    footer: {
+      text: DISCORD_CONFIG.FOOTER_TEXT,
+    },
+  };
+}
+
+/**
+ * Create Discord embed for data fetch errors
+ * @param {Array} errors - Array of error objects
+ * @returns {Object} Discord embed object
+ */
+function createErrorEmbed(errors) {
+  const errorFields = errors.map((err) => ({
+    name: `⚠️ ${err.source}`,
+    value: `Failed to fetch data: ${err.error}`,
+    inline: false,
+  }));
+
+  return {
+    title: "⚠️ Moonwell Data Fetch Warning",
+    description: `Failed to retrieve data from Moonwell API after ${RETRY_CONFIG.MAX_RETRIES} attempts. This may be a temporary issue.`,
+    color: DISCORD_CONFIG.WARNING_COLOR,
+    fields: errorFields,
     timestamp: new Date().toISOString(),
     footer: {
       text: DISCORD_CONFIG.FOOTER_TEXT,
@@ -281,12 +370,12 @@ function checkAlertThresholds(usdcMetrics, vaultMetrics) {
   console.log(
     `USD Coin Core: $${formatNumber(usdcMetrics.availableLiquidity)} ` +
       `(threshold: $${formatNumber(THRESHOLDS.USD_COIN_CORE)}) ` +
-      `${usdcBelowThreshold ? "⚠️ BELOW" : "✓"}`,
+      `${usdcBelowThreshold ? "⚠️ BELOW" : "✓"}`
   );
   console.log(
     `Flagship USDC: $${formatNumber(vaultMetrics.availableLiquidity)} ` +
       `(threshold: $${formatNumber(THRESHOLDS.FLAGSHIP_USDC)}) ` +
-      `${vaultBelowThreshold ? "⚠️ BELOW" : "✓"}`,
+      `${vaultBelowThreshold ? "⚠️ BELOW" : "✓"}`
   );
 
   return {
@@ -314,7 +403,7 @@ async function sendDiscordAlert(embed) {
 
   if (!response.ok) {
     throw new Error(
-      `Discord webhook failed: ${response.status} ${response.statusText}`,
+      `Discord webhook failed: ${response.status} ${response.statusText}`
     );
   }
 
@@ -327,7 +416,25 @@ async function sendDiscordAlert(embed) {
  * @returns {Promise<boolean>} Whether alert was sent
  */
 async function processAndAlert(data) {
-  const { usdcMarket, mwusdcVault } = data;
+  const { usdcMarket, mwusdcVault, errors } = data;
+
+  // If we have data fetch errors, send a warning alert
+  if (errors.length > 0) {
+    console.log("⚠️  WARNING: Data fetch errors detected");
+
+    // Only send error alert if we couldn't fetch ANY data
+    if (!usdcMarket && !mwusdcVault) {
+      console.log("🚨 CRITICAL: No data available, sending error alert");
+      const errorEmbed = createErrorEmbed(errors);
+      await sendDiscordAlert(errorEmbed);
+      console.log("✅ Error alert sent to Discord");
+      return true;
+    } else {
+      console.log(
+        "⚠️  Partial data available, continuing with liquidity check"
+      );
+    }
+  }
 
   const usdcMetrics = calculateUsdcMetrics(usdcMarket);
   const vaultMetrics = calculateVaultMetrics(mwusdcVault);
@@ -345,7 +452,7 @@ async function processAndAlert(data) {
     usdcMetrics,
     vaultMetrics,
     !!usdcMarket,
-    !!mwusdcVault,
+    !!mwusdcVault
   );
 
   await sendDiscordAlert(embed);
@@ -372,5 +479,4 @@ async function main() {
   }
 }
 
-// Run immediately
 main();
