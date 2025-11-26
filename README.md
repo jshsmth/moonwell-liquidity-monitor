@@ -66,7 +66,7 @@ Edit `moonwell-liquidity-tracker.js` to adjust thresholds:
 
 ```javascript
 const USD_COIN_CORE_THRESHOLD = 4_500_000;  // $4.5M
-const FLAGSHIP_USDC_THRESHOLD = 29_000_000;  // $29M
+const FLAGSHIP_USDC_THRESHOLD = 25_000_000;  // $25M
 ```
 
 ### Discord Webhook Setup
