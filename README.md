@@ -65,7 +65,7 @@ npm start
 Edit `moonwell-liquidity-tracker.js` to adjust thresholds:
 
 ```javascript
-const USD_COIN_CORE_THRESHOLD = 4_500_000;  // $4.5M
+const USD_COIN_CORE_THRESHOLD = 3_000_000;  // $3M
 const FLAGSHIP_USDC_THRESHOLD = 22_000_000;  // $22M
 ```
 
